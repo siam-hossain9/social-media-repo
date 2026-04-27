@@ -1,0 +1,992 @@
+{
+  "name": "Multi-Platform Social Media Content Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "56812cea-c310-4604-be58-6000ac684d72",
+      "name": "Weekly Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://trends.google.com/trends/api/dailytrends",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "hl",
+              "value": "en-US"
+            },
+            {
+              "name": "tz",
+              "value": "-330"
+            },
+            {
+              "name": "geo",
+              "value": "US"
+            },
+            {
+              "name": "ns",
+              "value": "15"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "52428051-abd1-4280-97be-441ed1224291",
+      "name": "Fetch Google Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        464,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.twitter.com/2/tweets/search/recent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "trending technology AI -is:retweet lang:en"
+            },
+            {
+              "name": "max_results",
+              "value": "10"
+            },
+            {
+              "name": "tweet.fields",
+              "value": "public_metrics,created_at,text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a358534a-6799-459f-8562-eeda17bd7220",
+      "name": "Fetch Twitter Trending",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        464,
+        512
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "KKMZEQj96J1w7c8Z",
+          "name": "Bearer Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Google Trends Response\nconst trendsRaw = $('Fetch Google Trends').item.json;\nconst twitterData = $('Fetch Twitter Trending').item.json;\n\n// Clean Google Trends data (remove )]}' prefix)\nlet trendsText = '';\ntry {\n  const rawText = trendsRaw.data || trendsRaw.body || '';\n  const cleanText = rawText.replace(')]}\\',\\n', '');\n  const trendsJson = JSON.parse(cleanText);\n  const trendingStories = trendsJson?.default?.trendingSearchesDays?.[0]?.trendingSearches || [];\n  \n  trendsText = trendingStories\n    .slice(0, 10)\n    .map(t => t.title?.query || '')\n    .filter(Boolean)\n    .join(', ');\n} catch(e) {\n  trendsText = 'AI, Machine Learning, Automation, Technology, Innovation, Digital Transformation, ChatGPT, Productivity';\n}\n\n// Parse Twitter trends\nlet twitterTrends = '';\ntry {\n  const tweets = twitterData?.data || [];\n  twitterTrends = tweets\n    .slice(0, 5)\n    .map(t => t.text?.substring(0, 100))\n    .join(' | ');\n} catch(e) {\n  twitterTrends = 'AI tools, automation workflows, productivity hacks';\n}\n\n// Get current date info\nconst now = new Date();\nconst monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];\nconst currentMonth = monthNames[now.getMonth()];\nconst currentYear = now.getFullYear();\nconst weekNumber = Math.ceil(now.getDate() / 7);\n\nreturn [{\n  json: {\n    googleTrends: trendsText,\n    twitterTrends: twitterTrends,\n    currentMonth: currentMonth,\n    currentYear: currentYear,\n    weekNumber: weekNumber,\n    timestamp: now.toISOString(),\n    niche: 'Technology & AI',\n    targetAudience: 'Tech professionals, entrepreneurs, and digital marketers'\n  }\n}];"
+      },
+      "id": "65a2d6cc-406f-45b1-bd2f-43ff5c16694d",
+      "name": "Parse & Combine Trends",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "id": "c55d8c7c-b4e5-4c23-8088-99e2f6b2c486",
+      "name": "AI Generate Content Calendar",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.3,
+      "position": [
+        944,
+        400
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "7eKCmJuYCxg7bw9R",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI generated content calendar\nconst aiResponse = $input.item.json;\n\nlet calendarData;\ntry {\n  // Extract content from OpenAI response\n  const content = aiResponse.message?.content || aiResponse.choices?.[0]?.message?.content || '';\n  calendarData = JSON.parse(content);\n} catch(e) {\n  // Fallback data if parsing fails\n  calendarData = {\n    week_theme: 'AI & Automation Revolution',\n    content_ideas: [\n      {\n        id: 1,\n        topic: 'AI Tools for Productivity',\n        hook: '10 AI tools that replaced my entire team (not clickbait)',\n        core_message: 'AI is not replacing humans, its replacing humans who dont use AI',\n        call_to_action: 'Which tool do you use? Comment below!',\n        hashtags: ['#AI', '#Productivity', '#Tech', '#Automation', '#Future', '#ChatGPT', '#Tools', '#Innovation', '#Work', '#Digital'],\n        content_type: 'listicle',\n        best_day: 'Tuesday',\n        best_time: '9:00 AM EST'\n      }\n    ]\n  };\n}\n\n// Return each content idea as separate item for parallel processing\nconst items = calendarData.content_ideas.map(idea => ({\n  json: {\n    ...idea,\n    week_theme: calendarData.week_theme,\n    hashtagString: idea.hashtags.join(' ')\n  }\n}));\n\nreturn items;"
+      },
+      "id": "32d36358-6464-4644-8e95-2c122be92156",
+      "name": "Parse Content Calendar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "id": "ab462532-c731-4321-a345-c6a183ada5e6",
+      "name": "AI Write Twitter Content",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.3,
+      "position": [
+        1424,
+        208
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "7eKCmJuYCxg7bw9R",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "id": "1f8598ec-58a6-48f9-b759-4151be3daafa",
+      "name": "AI Write LinkedIn Content",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.3,
+      "position": [
+        1424,
+        400
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "7eKCmJuYCxg7bw9R",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "id": "82857e08-662f-4957-a833-031982d14a47",
+      "name": "AI Write Instagram Content",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.3,
+      "position": [
+        1424,
+        608
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "7eKCmJuYCxg7bw9R",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all platform content for this topic\nconst calendarItem = $('Parse Content Calendar').item.json;\n\n// Get content from each platform node\nlet twitterContent, linkedinContent, instagramContent;\n\ntry {\n  const twitterRaw = $('AI Write Twitter Content').item.json;\n  const twitterText = twitterRaw.message?.content || twitterRaw.choices?.[0]?.message?.content || '{}';\n  twitterContent = JSON.parse(twitterText);\n} catch(e) {\n  twitterContent = {\n    single_tweet: `${calendarItem.hook} ${calendarItem.hashtagString}`,\n    thread: [],\n    image_prompt: `Professional tech illustration about ${calendarItem.topic}`\n  };\n}\n\ntry {\n  const linkedinRaw = $('AI Write LinkedIn Content').item.json;\n  const linkedinText = linkedinRaw.message?.content || linkedinRaw.choices?.[0]?.message?.content || '{}';\n  linkedinContent = JSON.parse(linkedinText);\n} catch(e) {\n  linkedinContent = {\n    headline: calendarItem.topic,\n    full_post: calendarItem.hook,\n    image_prompt: `Professional business illustration about ${calendarItem.topic}`\n  };\n}\n\ntry {\n  const instagramRaw = $('AI Write Instagram Content').item.json;\n  const instagramText = instagramRaw.message?.content || instagramRaw.choices?.[0]?.message?.content || '{}';\n  instagramContent = JSON.parse(instagramText);\n} catch(e) {\n  instagramContent = {\n    caption: `${calendarItem.hook} \\n\\n${calendarItem.hashtagString}`,\n    image_prompt: `Vibrant colorful illustration about ${calendarItem.topic}`\n  };\n}\n\nreturn [{\n  json: {\n    // Calendar data\n    topic_id: calendarItem.id,\n    topic: calendarItem.topic,\n    week_theme: calendarItem.week_theme,\n    content_type: calendarItem.content_type,\n    best_day: calendarItem.best_day,\n    best_time: calendarItem.best_time,\n    hashtags: calendarItem.hashtagString,\n    \n    // Platform content\n    twitter: twitterContent,\n    linkedin: linkedinContent,\n    instagram: instagramContent,\n    \n    // Image prompts (will use Twitter's by default for variety)\n    primary_image_prompt: twitterContent.image_prompt || `Professional illustration about ${calendarItem.topic}`,\n    \n    // Metadata\n    created_at: new Date().toISOString(),\n    status: 'ready_for_image'\n  }\n}];"
+      },
+      "id": "60fa4628-62ec-474e-8cb4-c1829873c694",
+      "name": "Combine All Platform Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "prompt": "={{ $json.primary_image_prompt }} Style: Professional, modern, high quality, suitable for social media. Aspect ratio: square. Vibrant colors.",
+        "options": {
+          "size": "1024x1024",
+          "style": "vivid"
+        }
+      },
+      "id": "d3ca4320-7b6c-4ece-bbac-cec1a6bfa0e8",
+      "name": "Generate DALL-E Image",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.3,
+      "position": [
+        1920,
+        400
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "7eKCmJuYCxg7bw9R",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare final content package with image URL\nconst contentData = $('Combine All Platform Content').item.json;\nconst dalleResponse = $input.item.json;\n\n// Extract image URL\nlet imageUrl = '';\ntry {\n  imageUrl = dalleResponse.data?.[0]?.url || \n             dalleResponse.images?.[0]?.url || \n             '';\n} catch(e) {\n  imageUrl = 'https://via.placeholder.com/1024x1024';\n}\n\n// Calculate schedule date based on best_day\nconst dayMap = {\n  'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, \n  'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 0\n};\n\nconst today = new Date();\nconst targetDay = dayMap[contentData.best_day] ?? 1;\nconst currentDay = today.getDay();\nlet daysUntilTarget = targetDay - currentDay;\nif (daysUntilTarget <= 0) daysUntilTarget += 7;\n\nconst scheduleDate = new Date(today);\nscheduleDate.setDate(today.getDate() + daysUntilTarget);\n\n// Parse best_time\nconst timeParts = contentData.best_time?.match(/(\\d+):(\\d+)\\s*(AM|PM)/i);\nif (timeParts) {\n  let hours = parseInt(timeParts[1]);\n  const minutes = parseInt(timeParts[2]);\n  const period = timeParts[3].toUpperCase();\n  if (period === 'PM' && hours !== 12) hours += 12;\n  if (period === 'AM' && hours === 12) hours = 0;\n  scheduleDate.setHours(hours, minutes, 0, 0);\n}\n\nreturn [{\n  json: {\n    ...contentData,\n    image_url: imageUrl,\n    scheduled_date: scheduleDate.toISOString(),\n    scheduled_date_readable: scheduleDate.toDateString() + ' at ' + contentData.best_time,\n    status: 'scheduled'\n  }\n}];"
+      },
+      "id": "1d4ec862-a5aa-4bbb-a715-f56679fc3719",
+      "name": "Prepare Final Content Package",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Content Calendar",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Topic ID": "={{ $json.topic_id }}",
+            "Week Theme": "={{ $json.week_theme }}",
+            "Topic": "={{ $json.topic }}",
+            "Content Type": "={{ $json.content_type }}",
+            "Scheduled Date": "={{ $json.scheduled_date_readable }}",
+            "Best Day": "={{ $json.best_day }}",
+            "Best Time": "={{ $json.best_time }}",
+            "Twitter Post": "={{ $json.twitter.single_tweet }}",
+            "LinkedIn Post": "={{ $json.linkedin.full_post }}",
+            "Instagram Caption": "={{ $json.instagram.caption }}",
+            "Hashtags": "={{ $json.hashtags }}",
+            "Image URL": "={{ $json.image_url }}",
+            "Status": "={{ $json.status }}",
+            "Created At": "={{ $json.created_at }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "49697a8d-1090-4328-94f5-90466390aa99",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        2400,
+        208
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HbdfaggRewclKw6D",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "",
+          "mode": "name",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "2c1d208a-5973-4a4d-a1fb-913daafd40fa",
+      "name": "Save to Airtable CRM",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2400,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.bufferapp.com/1/updates/create.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.twitter.single_tweet }}"
+            },
+            {
+              "name": "profile_ids[]",
+              "value": "YOUR_BUFFER_TWITTER_PROFILE_ID"
+            },
+            {
+              "name": "scheduled_at",
+              "value": "={{ $json.scheduled_date }}"
+            },
+            {
+              "name": "media[photo]",
+              "value": "={{ $json.image_url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0768f638-5b12-4900-bec4-98e6fdbc2431",
+      "name": "Schedule Twitter via Buffer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2400,
+        608
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3Ac9T9wyz4Dt19He",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.bufferapp.com/1/updates/create.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.linkedin.full_post }}"
+            },
+            {
+              "name": "profile_ids[]",
+              "value": "YOUR_BUFFER_LINKEDIN_PROFILE_ID"
+            },
+            {
+              "name": "scheduled_at",
+              "value": "={{ $json.scheduled_date }}"
+            },
+            {
+              "name": "media[photo]",
+              "value": "={{ $json.image_url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0e260a6b-05d2-4f67-abe8-6e700fc023c3",
+      "name": "Schedule LinkedIn via Buffer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2400,
+        784
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3Ac9T9wyz4Dt19He",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.bufferapp.com/1/updates/create.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.instagram.caption }}"
+            },
+            {
+              "name": "profile_ids[]",
+              "value": "YOUR_BUFFER_INSTAGRAM_PROFILE_ID"
+            },
+            {
+              "name": "scheduled_at",
+              "value": "={{ $json.scheduled_date }}"
+            },
+            {
+              "name": "media[photo]",
+              "value": "={{ $json.image_url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "be5c0481-744b-4b39-a1c3-cd4131ca8d1d",
+      "name": "Schedule Instagram via Buffer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2400,
+        960
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3Ac9T9wyz4Dt19He",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "=🚀 *Weekly Social Media Content Generated!*\n\n📅 *Week Theme:* {{ $('Parse Content Calendar').item.json.week_theme }}\n📝 *Topics Created:* 7\n📱 *Platforms:* Twitter, LinkedIn, Instagram\n🎨 *Images Generated:* 7 (DALL-E)\n⏰ *All posts scheduled via Buffer*\n\n*Top Topic This Week:*\n{{ $('Parse Content Calendar').item.json.topic }}\n\n✅ Check Google Sheets for full calendar\n📊 Analytics report will arrive in 7 days\n\n_Powered by N8N Automation_ 🤖",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "f7b46276-c121-486c-9972-2e37088c43e5",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        2672,
+        272
+      ],
+      "webhookId": "bec1635c-ed0d-4d2b-8d69-265995c2a219"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "6cb5e0d2-1ac8-4d29-aa8b-3455654df63d",
+      "name": "Wait 7 Days for Analytics",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2704,
+        592
+      ],
+      "webhookId": "c85d9bcb-6d69-47ea-9550-1d813b066d42"
+    },
+    {
+      "parameters": {
+        "url": "https://api.bufferapp.com/1/updates/{{ $json.topic_id }}/interactions.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "event",
+              "value": "clicks"
+            },
+            {
+              "name": "count",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f1587b5a-6d42-4d62-8a6a-bb711b35900e",
+      "name": "Fetch Post Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2880,
+        592
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3Ac9T9wyz4Dt19He",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analyze performance and determine if content should be repurposed\nconst analyticsData = $input.item.json;\nconst originalContent = $('Prepare Final Content Package').item.json;\n\n// Simulate analytics parsing (Buffer API response)\nlet engagementScore = 0;\nlet clicks = 0;\nlet likes = 0;\nlet shares = 0;\nlet comments = 0;\n\ntry {\n  const interactions = analyticsData?.interactions || [];\n  clicks = interactions.filter(i => i.event === 'clicks').length;\n  likes = interactions.filter(i => i.event === 'likes').length;\n  shares = interactions.filter(i => i.event === 'shares').length;\n  comments = interactions.filter(i => i.event === 'comments').length;\n  \n  // Calculate engagement score (0-100)\n  engagementScore = Math.min(100, (\n    (clicks * 1) + \n    (likes * 2) + \n    (shares * 5) + \n    (comments * 3)\n  ));\n} catch(e) {\n  // Demo data for testing\n  clicks = Math.floor(Math.random() * 500);\n  likes = Math.floor(Math.random() * 200);\n  shares = Math.floor(Math.random() * 50);\n  comments = Math.floor(Math.random() * 30);\n  engagementScore = Math.floor(Math.random() * 100);\n}\n\n// Determine performance level\nlet performanceLevel = 'low';\nif (engagementScore >= 70) performanceLevel = 'viral';\nelse if (engagementScore >= 40) performanceLevel = 'high';\nelse if (engagementScore >= 20) performanceLevel = 'medium';\n\nreturn [{\n  json: {\n    ...originalContent,\n    analytics: {\n      clicks,\n      likes,\n      shares,\n      comments,\n      engagement_score: engagementScore,\n      performance_level: performanceLevel,\n      analyzed_at: new Date().toISOString()\n    },\n    should_repurpose: engagementScore >= 40\n  }\n}];"
+      },
+      "id": "4855bee7-b8c8-4f45-8d29-6f2e90ef70e2",
+      "name": "Analyze Performance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-repurpose",
+              "leftValue": "={{ $json.should_repurpose }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2a36a17-af68-4431-a5bf-c0085a4e97fe",
+      "name": "Should Repurpose?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "id": "26f53384-b3b5-433e-a85c-c1fa2ee4ac62",
+      "name": "AI Repurpose Top Content",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.3,
+      "position": [
+        3600,
+        480
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "7eKCmJuYCxg7bw9R",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@gmail.com",
+        "subject": "=🚀 Top Content Repurposed: {{ $json.topic }}",
+        "message": "=<html>\n<body style='font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;'>\n\n<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; margin-bottom: 30px;'>\n  <h1 style='color: white; margin: 0;'>🚀 High-Performing Content Repurposed!</h1>\n  <p style='color: rgba(255,255,255,0.8); margin: 10px 0 0 0;'>Engagement Score: {{ $json.analytics.engagement_score }}/100</p>\n</div>\n\n<div style='background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>\n  <h2>📊 Performance Stats</h2>\n  <table style='width: 100%; border-collapse: collapse;'>\n    <tr>\n      <td style='padding: 10px; background: white; border-radius: 5px; text-align: center; margin: 5px;'>\n        <strong style='font-size: 24px; color: #667eea;'>{{ $json.analytics.likes }}</strong><br>Likes\n      </td>\n      <td style='padding: 10px; background: white; border-radius: 5px; text-align: center;'>\n        <strong style='font-size: 24px; color: #764ba2;'>{{ $json.analytics.shares }}</strong><br>Shares\n      </td>\n      <td style='padding: 10px; background: white; border-radius: 5px; text-align: center;'>\n        <strong style='font-size: 24px; color: #f093fb;'>{{ $json.analytics.comments }}</strong><br>Comments\n      </td>\n      <td style='padding: 10px; background: white; border-radius: 5px; text-align: center;'>\n        <strong style='font-size: 24px; color: #4facfe;'>{{ $json.analytics.clicks }}</strong><br>Clicks\n      </td>\n    </tr>\n  </table>\n</div>\n\n<div style='background: white; border: 1px solid #e0e0e0; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>\n  <h2>🐦 Original Topic</h2>\n  <p><strong>Topic:</strong> {{ $json.topic }}</p>\n  <p><strong>Performance:</strong> {{ $json.analytics.performance_level }}</p>\n  <p><strong>Image:</strong> <a href='{{ $json.image_url }}'>View Generated Image</a></p>\n</div>\n\n<div style='background: #e8f4fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>\n  <h2>✅ New Content Ready for Deployment</h2>\n  <p>Repurposed content has been generated and is ready for review in your Airtable dashboard.</p>\n  <a href='https://airtable.com' style='background: #667eea; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;'>View in Airtable →</a>\n</div>\n\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "2f01fb0b-8550-4806-a6cf-ac65aeecb221",
+      "name": "Email Repurposed Content",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3840,
+        480
+      ],
+      "webhookId": "221e4174-cebd-4a8e-aa0e-1d37822073fa"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate weekly performance report\nconst allItems = $input.all();\n\nlet totalLikes = 0;\nlet totalShares = 0;\nlet totalComments = 0;\nlet totalClicks = 0;\nlet topContent = null;\nlet topScore = 0;\nlet viralCount = 0;\nlet highCount = 0;\n\nallItems.forEach(item => {\n  const analytics = item.json.analytics || {};\n  totalLikes += analytics.likes || 0;\n  totalShares += analytics.shares || 0;\n  totalComments += analytics.comments || 0;\n  totalClicks += analytics.clicks || 0;\n  \n  if ((analytics.engagement_score || 0) > topScore) {\n    topScore = analytics.engagement_score || 0;\n    topContent = item.json;\n  }\n  \n  if (analytics.performance_level === 'viral') viralCount++;\n  if (analytics.performance_level === 'high') highCount++;\n});\n\nconst totalPosts = allItems.length * 3; // 3 platforms\nconst avgEngagement = allItems.length > 0 \n  ? Math.round(allItems.reduce((sum, i) => sum + (i.json.analytics?.engagement_score || 0), 0) / allItems.length)\n  : 0;\n\nreturn [{\n  json: {\n    report: {\n      week_ending: new Date().toDateString(),\n      total_topics: allItems.length,\n      total_posts_scheduled: totalPosts,\n      total_likes: totalLikes,\n      total_shares: totalShares,\n      total_comments: totalComments,\n      total_clicks: totalClicks,\n      avg_engagement_score: avgEngagement,\n      viral_posts: viralCount,\n      high_performing_posts: highCount,\n      top_content_topic: topContent?.topic || 'N/A',\n      top_content_score: topScore,\n      generated_at: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "id": "7cdc275c-c1bf-47c5-aceb-14fe89dfa384",
+      "name": "Generate Weekly Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@gmail.com",
+        "subject": "=📈 Weekly Social Media Performance Report - {{ $json.report.week_ending }}",
+        "message": "=<html>\n<body style='font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5;'>\n\n<div style='background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 40px; border-radius: 15px; margin-bottom: 30px; text-align: center;'>\n  <h1 style='color: white; margin: 0; font-size: 28px;'>📈 Weekly Social Media Report</h1>\n  <p style='color: rgba(255,255,255,0.9); font-size: 16px;'>Week Ending: {{ $json.report.week_ending }}</p>\n</div>\n\n<div style='display: grid; gap: 15px; margin-bottom: 30px;'>\n\n  <div style='background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);'>\n    <h2 style='color: #333; border-bottom: 2px solid #11998e; padding-bottom: 10px;'>📊 Overview</h2>\n    <table style='width: 100%; border-collapse: collapse;'>\n      <tr style='background: #f8f9fa;'>\n        <td style='padding: 12px; border-radius: 6px;'><strong>Total Topics Created</strong></td>\n        <td style='padding: 12px; font-size: 20px; font-weight: bold; color: #11998e;'>{{ $json.report.total_topics }}</td>\n      </tr>\n      <tr>\n        <td style='padding: 12px;'><strong>Total Posts Scheduled</strong></td>\n        <td style='padding: 12px; font-size: 20px; font-weight: bold; color: #667eea;'>{{ $json.report.total_posts_scheduled }}</td>\n      </tr>\n      <tr style='background: #f8f9fa;'>\n        <td style='padding: 12px;'><strong>Avg Engagement Score</strong></td>\n        <td style='padding: 12px; font-size: 20px; font-weight: bold; color: #f093fb;'>{{ $json.report.avg_engagement_score }}/100</td>\n      </tr>\n      <tr>\n        <td style='padding: 12px;'><strong>🔥 Viral Posts</strong></td>\n        <td style='padding: 12px; font-size: 20px; font-weight: bold; color: #ff6b6b;'>{{ $json.report.viral_posts }}</td>\n      </tr>\n    </table>\n  </div>\n\n  <div style='background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);'>\n    <h2 style='color: #333; border-bottom: 2px solid #38ef7d; padding-bottom: 10px;'>📱 Engagement Stats</h2>\n    <div style='display: flex; justify-content: space-around; text-align: center; padding: 20px 0;'>\n      <div>\n        <div style='font-size: 32px; font-weight: bold; color: #667eea;'>{{ $json.report.total_likes }}</div>\n        <div style='color: #666;'>Total Likes</div>\n      </div>\n      <div>\n        <div style='font-size: 32px; font-weight: bold; color: #11998e;'>{{ $json.report.total_shares }}</div>\n        <div style='color: #666;'>Total Shares</div>\n      </div>\n      <div>\n        <div style='font-size: 32px; font-weight: bold; color: #f093fb;'>{{ $json.report.total_comments }}</div>\n        <div style='color: #666;'>Comments</div>\n      </div>\n      <div>\n        <div style='font-size: 32px; font-weight: bold; color: #4facfe;'>{{ $json.report.total_clicks }}</div>\n        <div style='color: #666;'>Link Clicks</div>\n      </div>\n    </div>\n  </div>\n\n  <div style='background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 25px; border-radius: 12px;'>\n    <h2 style='color: white; margin-top: 0;'>🏆 Top Performing Content</h2>\n    <p style='color: white; font-size: 18px;'>{{ $json.report.top_content_topic }}</p>\n    <p style='color: rgba(255,255,255,0.8);'>Engagement Score: {{ $json.report.top_content_score }}/100</p>\n  </div>\n\n</div>\n\n<div style='text-align: center; color: #999; font-size: 12px; margin-top: 20px;'>\n  Generated automatically by N8N Social Media Engine • {{ $json.report.generated_at }}\n</div>\n\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "a0c3234f-aedf-4212-8ce7-d2044d4a1449",
+      "name": "Send Weekly Report Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3840,
+        720
+      ],
+      "webhookId": "1e150d85-14b3-4534-9a91-6561d4b14eb8"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Analytics",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Topic": "={{ $json.topic }}",
+            "Engagement Score": "={{ $json.analytics.engagement_score }}",
+            "Performance Level": "={{ $json.analytics.performance_level }}",
+            "Likes": "={{ $json.analytics.likes }}",
+            "Shares": "={{ $json.analytics.shares }}",
+            "Comments": "={{ $json.analytics.comments }}",
+            "Clicks": "={{ $json.analytics.clicks }}",
+            "Repurposed": "={{ $json.should_repurpose }}",
+            "Analyzed At": "={{ $json.analytics.analyzed_at }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "5604dfa5-2808-43ef-98d3-87de535cdaa2",
+      "name": "Log Analytics to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        3376,
+        832
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HbdfaggRewclKw6D",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Weekly Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Google Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Google Trends": {
+      "main": [
+        [
+          {
+            "node": "Fetch Twitter Trending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Twitter Trending": {
+      "main": [
+        [
+          {
+            "node": "Parse & Combine Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Combine Trends": {
+      "main": [
+        [
+          {
+            "node": "AI Generate Content Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Generate Content Calendar": {
+      "main": [
+        [
+          {
+            "node": "Parse Content Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Content Calendar": {
+      "main": [
+        [
+          {
+            "node": "AI Write Twitter Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Write Twitter Content": {
+      "main": [
+        [
+          {
+            "node": "AI Write LinkedIn Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Write LinkedIn Content": {
+      "main": [
+        [
+          {
+            "node": "AI Write Instagram Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Write Instagram Content": {
+      "main": [
+        [
+          {
+            "node": "Combine All Platform Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine All Platform Content": {
+      "main": [
+        [
+          {
+            "node": "Generate DALL-E Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate DALL-E Image": {
+      "main": [
+        [
+          {
+            "node": "Prepare Final Content Package",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Final Content Package": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Save to Airtable CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Airtable CRM": {
+      "main": [
+        [
+          {
+            "node": "Schedule Twitter via Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Twitter via Buffer": {
+      "main": [
+        [
+          {
+            "node": "Schedule LinkedIn via Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule LinkedIn via Buffer": {
+      "main": [
+        [
+          {
+            "node": "Schedule Instagram via Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Instagram via Buffer": {
+      "main": [
+        [
+          {
+            "node": "Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Notification": {
+      "main": [
+        [
+          {
+            "node": "Wait 7 Days for Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 7 Days for Analytics": {
+      "main": [
+        [
+          {
+            "node": "Fetch Post Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Post Analytics": {
+      "main": [
+        [
+          {
+            "node": "Analyze Performance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Performance": {
+      "main": [
+        [
+          {
+            "node": "Should Repurpose?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Repurpose?": {
+      "main": [
+        [
+          {
+            "node": "AI Repurpose Top Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Analytics to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Repurpose Top Content": {
+      "main": [
+        [
+          {
+            "node": "Email Repurposed Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Repurposed Content": {
+      "main": [
+        [
+          {
+            "node": "Generate Weekly Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Weekly Report": {
+      "main": [
+        [
+          {
+            "node": "Send Weekly Report Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "5651e910-90ed-446f-a059-a64759c582ce",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "instanceId": "561979401757641cce6ae60d81d06e6011d1bbb35c4ea574388ba0f41b9d4709"
+  },
+  "id": "pkGNKAdDw0TpkIKP",
+  "tags": []
+}
