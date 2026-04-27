@@ -2,9 +2,9 @@
 
 This repository contains an autonomous n8n workflow that monitors trending topics, generates a targeted weekly content calendar using artificial intelligence, creates platform-specific posts, and schedules them for publication.
 
-## 🖼️ Workflow Overview
+## Workflow Overview
 
-![n8n Workflow diagram](workflow.png)
+![n8n Workflow diagram](Screenshot 2026-04-27 192100.png)
 
 *(Note: Please ensure the provided workflow image is saved as `workflow.png` in this repository)*
 
