@@ -1,4 +1,4 @@
-# Multi-Platform Social Media Content Engine 🚀
+# Multi-Platform Social Media Content Engine 
 
 This repository contains an autonomous n8n workflow that monitors trending topics, generates a targeted weekly content calendar using artificial intelligence, creates platform-specific posts, and schedules them for publication.
 
