@@ -4,9 +4,7 @@ This repository contains an autonomous n8n workflow that monitors trending topic
 
 ## Workflow Overview
 
-![n8n Workflow diagram](Screenshot 2026-04-27 192100.png)
-
-*(Note: Please ensure the provided workflow image is saved as `workflow.png` in this repository)*
+![n8n Workflow diagram](Screenshot%202026-04-27%20192100.png)
 
 ## ⚙️ How It Works
 
